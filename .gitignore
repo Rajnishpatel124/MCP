@@ -1,0 +1,12 @@
+# Development files — not needed for production
+serve.py
+package.json
+*.png
+node_modules/
+.DS_Store
+.env
+.env.local
+*.log
+
+# OS files
+Thumbs.db

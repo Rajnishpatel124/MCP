@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f0f0f">
+<title>MPC — Beat Studio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0f0f0f;
+    --surface:   #181818;
+    --surface2:  #222222;
+    --surface3:  #2a2a2a;
+    --border:    #333;
+    --border2:   #444;
+    --text:      #e0ddd6;
+    --muted:     #666;
+    --accent:    #ff5500;
+    --accent2:   #ff8833;
+    --green:     #22c55e;
+    --amber:     #f59e0b;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'Inter', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    user-select: none;
+  }
+
+  /* ── Header ─────────────────────────────── */
+  .header {
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .logo span { color: var(--muted); font-weight: 400; }
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .status-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── Main shell ──────────────────────────── */
+  .shell {
+    width: 100%;
+    max-width: 720px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+
+  /* ── Kit selector ─────────────────────────── */
+  .kit-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .kit-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    width: 36px;
+    flex-shrink: 0;
+  }
+  .kit-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .kit-btn:hover { border-color: var(--border2); color: var(--text); }
+  .kit-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(255,85,0,.35);
+  }
+
+  /* ── Loop pad strip ──────────────────────── */
+  .loop-strip {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; margin-bottom: 16px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .loop-strip.loaded { border-color: rgba(99,102,241,.45); }
+  .loop-strip.error { border-color: var(--amber); background: rgba(245,158,11,.07); }
+  .loop-strip.error .loop-badge { background: var(--amber); border-color: var(--amber); color: #1a1a1a; }
+  .loop-strip.error .loop-title { color: var(--amber); }
+  .loop-badge {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 7px; background: var(--surface3); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--muted);
+  }
+  .loop-strip.loaded .loop-badge { background: #6366f1; border-color: #6366f1; color: #fff; }
+  .loop-strip.playing .loop-badge { animation: loopPulse 1s ease-in-out infinite; }
+  @keyframes loopPulse { 0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.6)} 50%{box-shadow:0 0 0 6px rgba(99,102,241,0)} }
+  .loop-info { flex: 1; min-width: 0; }
+  .loop-title { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .loop-sub { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 0.04em; margin-top: 2px; }
+  .loop-load-btn {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em;
+    padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface3); color: var(--muted); cursor: pointer; transition: all 0.12s; flex-shrink: 0;
+  }
+  .loop-load-btn:hover { color: var(--text); border-color: var(--border2); }
+
+  /* Pad 9 looping indicator */
+  .pad.looping {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 1px #6366f1, 0 0 22px rgba(99,102,241,.55);
+    background: rgba(99,102,241,.12);
+  }
+  .pad.looping::after {
+    content: ''; position: absolute; top: 8px; right: 8px;
+    width: 7px; height: 7px; border-radius: 50%; background: #6366f1;
+    box-shadow: 0 0 8px #6366f1; z-index: 2;
+    animation: loopPulse 1s ease-in-out infinite;
+  }
+
+  /* ── Sampler panel ───────────────────────── */
+  .sampler-panel { margin-bottom: 20px; }
+  .drop-zone {
+    border: 1.5px dashed var(--border2);
+    border-radius: 12px;
+    padding: 22px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--surface2);
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(255,85,0,.06);
+  }
+  .drop-icon { font-size: 20px; color: var(--accent); margin-bottom: 6px; }
+  .drop-text { font-size: 13px; font-weight: 500; color: var(--text); }
+  .drop-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 4px; letter-spacing: 0.05em; }
+
+  .sample-wave { width: 100%; height: 54px; display: block; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); }
+
+  .sampler-controls {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-top: 12px; padding: 12px 14px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .ctrl { display: flex; align-items: center; gap: 8px; }
+  .ctrl-grow { flex: 1; min-width: 140px; }
+  .ctrl-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+  .ctrl-val { font-family: var(--mono); font-size: 10px; color: var(--accent); width: 34px; text-align: right; }
+  select {
+    font-family: var(--mono); font-size: 11px; background: var(--surface3);
+    color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; cursor: pointer;
+  }
+  .mode-btn, .reload-btn {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em;
+    padding: 5px 11px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface3); color: var(--muted); cursor: pointer; transition: all 0.12s;
+  }
+  .mode-btn:hover, .reload-btn:hover { color: var(--text); border-color: var(--border2); }
+  .mode-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .reload-btn { margin-left: auto; }
+
+  /* ── Pad grid ────────────────────────────── */
+  .pad-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .pad {
+    aspect-ratio: 1;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 10px;
+    transition: transform 0.06s, box-shadow 0.06s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pad::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--pad-color, rgba(255,85,0,0));
+    opacity: 0;
+    transition: opacity 0.08s;
+    border-radius: inherit;
+  }
+
+  .pad.hit::before { opacity: 1; }
+  .pad.hit { transform: scale(0.95); }
+
+  .pad-name {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+    position: relative;
+    z-index: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .pad-key {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    position: relative;
+    z-index: 1;
+    margin-top: 2px;
+  }
+
+  /* Color accents per row */
+  .pad[data-row="0"] { --pad-color: rgba(255,85,0,.25); }
+  .pad[data-row="1"] { --pad-color: rgba(34,197,94,.2); }
+  .pad[data-row="2"] { --pad-color: rgba(99,102,241,.25); }
+  .pad[data-row="3"] { --pad-color: rgba(245,158,11,.25); }
+
+  .pad[data-row="0"].has-sample { border-color: rgba(255,85,0,.4); }
+  .pad[data-row="1"].has-sample { border-color: rgba(34,197,94,.3); }
+  .pad[data-row="2"].has-sample { border-color: rgba(99,102,241,.4); }
+  .pad[data-row="3"].has-sample { border-color: rgba(245,158,11,.4); }
+
+  .pad:not(.has-sample) .pad-name { color: var(--muted); }
+
+  /* ── Volume strip ────────────────────────── */
+  .vol-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+  .vol-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(255,85,0,.5);
+    cursor: pointer;
+  }
+  .vol-val {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    width: 30px;
+    text-align: right;
+  }
+
+  /* ── Bottom row ──────────────────────────── */
+  .bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .info-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .info-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .key-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+  }
+  .key-chip {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text);
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 0;
+    text-align: center;
+  }
+
+  .last-hit {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .last-hit-sub {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ── Visualiser bar ──────────────────────── */
+  .viz-bar {
+    margin-top: 16px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .viz-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0%;
+    border-radius: 2px;
+    transition: width 0.05s;
+  }
+
+  /* ── Waveform canvas ─────────────────────── */
+  canvas {
+    width: 100%;
+    height: 40px;
+    display: block;
+    margin-top: 10px;
+    opacity: 0.7;
+  }
+
+  /* ── Loading overlay ─────────────────────── */
+  .loading {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    z-index: 100;
+    transition: opacity 0.4s;
+  }
+  .loading.done { opacity: 0; pointer-events: none; }
+  .loading-text {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+  }
+  .loading-bar {
+    width: 160px; height: 2px;
+    background: var(--border);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .loading-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    border-radius: 1px;
+    transition: width 0.2s;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     RESPONSIVE LAYER  (additive — desktop look is unchanged)
+     Same dark MPC aesthetic, colors, branding and interactions; only the
+     layout/spacing/scale adapt down to phones, with notch-safe insets.
+     ════════════════════════════════════════════════════════════════════════ */
+
+  /* No horizontal scroll, ever; smooth text scaling on iOS */
+  html { -webkit-text-size-adjust: 100%; }
+  html, body { max-width: 100%; overflow-x: hidden; }
+
+  body {
+    min-height: 100dvh;                       /* dynamic vh: accounts for mobile URL bar */
+    /* Respect notch / Dynamic Island / home indicator (falls back to original 24/16) */
+    padding-top:    max(24px, env(safe-area-inset-top));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    padding-left:   max(16px, env(safe-area-inset-left));
+    padding-right:  max(16px, env(safe-area-inset-right));
+  }
+
+  /* Kill 300ms tap delay + double-tap-to-zoom across the WHOLE app.
+     `manipulation` still allows scrolling (pan) and pinch-zoom for accessibility,
+     it only removes the double-tap zoom that interferes with rapid pad tapping. */
+  html, body { touch-action: manipulation; }
+  .pad, .kit-btn, .mode-btn, .reload-btn, .loop-load-btn,
+  .drop-zone, button, select, input[type=range] { touch-action: manipulation; }
+  /* Don't let a fast double-tap on a pad select its label text either */
+  .pad, .kit-row, .info-box, .loop-strip, .header { -webkit-user-select: none; user-select: none; }
+
+  /* ── Tablets ( ≤ 900px ) ───────────────────────────────── */
+  @media (max-width: 900px) {
+    .shell { padding: 20px; border-radius: 16px; }
+  }
+
+  /* ── Phones ( ≤ 600px : Pixel, Galaxy S, iPhone 13–15 ) ── */
+  @media (max-width: 600px) {
+    body { justify-content: flex-start; }     /* top-align so tall content never clips */
+    .header { margin-bottom: 16px; }
+    .shell  { padding: 14px; border-radius: 14px; }
+    .kit-row { flex-wrap: wrap; row-gap: 8px; margin-bottom: 16px; }
+    .pad-grid { gap: 8px; margin-bottom: 16px; }
+    .pad { padding: 8px; border-radius: 9px; }
+    .pad-name { font-size: 10px; }
+    .pad-key  { font-size: 8px; }
+    .vol-strip, .loop-strip, .sampler-controls,
+    .info-box { padding: 10px 12px; }
+    .last-hit { font-size: 19px; }
+  }
+
+  /* ── Small phones ( ≤ 380px : iPhone SE, small Android ) ── */
+  @media (max-width: 380px) {
+    body { padding-left:  max(10px, env(safe-area-inset-left));
+           padding-right: max(10px, env(safe-area-inset-right)); }
+    .shell { padding: 11px; }
+    .pad-grid { gap: 6px; }
+    .pad { padding: 6px; }
+    .bottom-row { grid-template-columns: 1fr; }  /* stack Last hit + Key map */
+  }
+
+  /* ── Touch devices: finger-friendly slider + buttons ───── */
+  @media (pointer: coarse) {
+    input[type=range] { height: 6px; }
+    input[type=range]::-webkit-slider-thumb { width: 22px; height: 22px; }
+    input[type=range]::-moz-range-thumb {
+      width: 22px; height: 22px; border: none; border-radius: 50%;
+      background: var(--accent); box-shadow: 0 0 6px rgba(255,85,0,.5);
+    }
+    .kit-btn, .mode-btn, .reload-btn, .loop-load-btn { padding-top: 8px; padding-bottom: 8px; }
+    .drop-zone { padding: 26px 16px; }
+  }
+
+  /* ── Landscape phones: tighten vertical rhythm ─────────── */
+  @media (max-height: 500px) and (orientation: landscape) {
+    body { justify-content: flex-start; padding-top: max(10px, env(safe-area-inset-top)); }
+    .header { margin-bottom: 10px; }
+    .shell  { padding: 12px; }
+    .pad-grid { gap: 7px; margin-bottom: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="logo">RAJNISH'S MPC <span>RUNAWAY - YE</span></div>
+  <div class="loading-bar"><div class="loading-fill" id="loadingFill"></div></div>
+  <div class="loading-text" id="loadingText">initialising audio engine…</div>
+</div>
+
+<div class="header">
+  <div class="logo">RAJNISH'S MPC <span>/ RUNAWAY - YE</span></div>
+  <div class="status-row">
+    <div class="status-dot"></div>
+    <div class="status-label" id="statusLabel">READY</div>
+  </div>
+</div>
+
+<div class="shell">
+
+  <!-- Kit selector -->
+  <div class="kit-row">
+    <div class="kit-label">KIT</div>
+    <button class="kit-btn active" data-kit="drums">DRUMS</button>
+    <button class="kit-btn" data-kit="keys">KEYS</button>
+    <button class="kit-btn" data-kit="bass">BASS</button>
+    <button class="kit-btn" data-kit="fx">FX</button>
+    <button class="kit-btn" data-kit="sample">SAMPLE</button>
+  </div>
+
+  <!-- Sampler panel (shown only for SAMPLE kit) -->
+  <div class="sampler-panel" id="samplerPanel" style="display:none">
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="audio/*" hidden>
+      <div class="drop-icon">⏏</div>
+      <div class="drop-text" id="dropText">Drop an audio file here, or click to browse</div>
+      <div class="drop-sub" id="dropSub">.mp3 / .wav / .ogg — chopped across all 16 pads</div>
+    </div>
+    <canvas id="sampleWave" class="sample-wave" style="display:none"></canvas>
+    <div class="sampler-controls" id="samplerControls" style="display:none">
+      <div class="ctrl">
+        <span class="ctrl-label">Slices</span>
+        <select id="sliceCount">
+          <option>4</option><option>8</option><option selected>16</option>
+        </select>
+      </div>
+      <div class="ctrl">
+        <span class="ctrl-label">Mode</span>
+        <button class="mode-btn active" id="modeOneshot" data-mode="oneshot">One-shot</button>
+        <button class="mode-btn" id="modeGate" data-mode="gate">Gate</button>
+      </div>
+      <div class="ctrl ctrl-grow">
+        <span class="ctrl-label">Pitch</span>
+        <input type="range" id="samplePitch" min="50" max="200" value="100">
+        <span class="ctrl-val" id="pitchVal">1.0×</span>
+      </div>
+      <button class="reload-btn" id="reloadBtn">↺ Load new</button>
+    </div>
+  </div>
+
+  <!-- 4×4 Pad grid -->
+  <div class="pad-grid" id="padGrid"></div>
+
+  <!-- Master volume -->
+  <div class="vol-strip">
+    <div class="vol-label">Master vol</div>
+    <input type="range" id="masterVol" min="0" max="100" value="85">
+    <div class="vol-val" id="volVal">85</div>
+  </div>
+
+  <!-- Loop pad loader (bound to pad 9 / key Z) -->
+  <div class="loop-strip" id="loopStrip">
+    <div class="loop-badge" id="loopBadge">9</div>
+    <div class="loop-info">
+      <div class="loop-title" id="loopTitle">Loop pad — empty</div>
+      <div class="loop-sub" id="loopSub">load a clip; the Instrumental pad (Z) toggles it on loop</div>
+    </div>
+    <input type="file" id="loopInput" accept="audio/*" hidden>
+    <button class="loop-load-btn" id="loopLoadBtn">Load clip</button>
+  </div>
+
+  <!-- Bottom info -->
+  <div class="bottom-row">
+    <div class="info-box">
+      <div class="info-title">Last hit</div>
+      <div class="last-hit" id="lastHitName">—</div>
+      <div class="last-hit-sub" id="lastHitKey">press a pad or key</div>
+    </div>
+    <div class="info-box">
+      <div class="info-title">Key map</div>
+      <div class="key-grid" id="keyGrid"></div>
+    </div>
+  </div>
+
+  <!-- Waveform -->
+  <canvas id="vizCanvas"></canvas>
+
+</div>
+
+<script>
+// ── Kit definitions ────────────────────────────────────────────────────────
+// Each kit has 16 pads. We synthesise all sounds with Web Audio API — no
+// external files needed. Real projects would fetch .wav buffers instead.
+
+const KITS = {
+  drums: [
+    { name: 'Piano 1',   color: '#ff5500', synth: 'kick',  sampleUrl: 'piano-one.wav' },
+    { name: 'Piano 2',   color: '#ff5500', synth: 'snare', sampleUrl: 'piano-two.wav' },
+    { name: 'Piano 3',   color: '#ff5500', synth: 'hihat', sampleUrl: 'piano-three.wav' },
+    { name: 'Piano 4',   color: '#ff5500', synth: 'openhat', sampleUrl: 'piano-four.wav' },
+    { name: 'Piano 5',   color: '#22c55e', synth: 'clap', sampleUrl: 'piano-five.wav' },
+    { name: 'Piano 6',   color: '#22c55e', synth: 'rim', sampleUrl: 'piano-six.wav' },
+    { name: 'Piano 7',   color: '#22c55e', synth: 'tomhi', sampleUrl: 'piano-seven.wav' },
+    { name: 'Piano 8',   color: '#22c55e', synth: 'tomlo', sampleUrl: 'piano-eight.wav' },
+    { name: 'Instrumental', color: '#6366f1', synth: '808'     },
+    { name: 'Look at YA', color: '#6366f1', synth: 'shaker', sampleUrl: 'look-at-ya.wav', single: true },
+    { name: 'YE Verse',  color: '#6366f1', synth: 'cowbell', sampleUrl: 'ye-verse.wav', single: true },
+    { name: 'Stop',      color: '#6366f1', action: 'stop'   },
+    { name: 'Perc 1',   color: '#f59e0b', synth: 'perc1'   },
+    { name: 'Perc 2',   color: '#f59e0b', synth: 'perc2'   },
+    { name: 'Fx Up',    color: '#f59e0b', synth: 'fxup'    },
+    { name: 'Fx Down',  color: '#f59e0b', synth: 'fxdown'  },
+  ],
+  keys: [
+    { name: 'C4',  color: '#6366f1', synth: 'note', freq: 261.63 },
+    { name: 'D4',  color: '#6366f1', synth: 'note', freq: 293.66 },
+    { name: 'E4',  color: '#6366f1', synth: 'note', freq: 329.63 },
+    { name: 'F4',  color: '#6366f1', synth: 'note', freq: 349.23 },
+    { name: 'G4',  color: '#6366f1', synth: 'note', freq: 392.00 },
+    { name: 'A4',  color: '#6366f1', synth: 'note', freq: 440.00 },
+    { name: 'B4',  color: '#6366f1', synth: 'note', freq: 493.88 },
+    { name: 'C5',  color: '#6366f1', synth: 'note', freq: 523.25 },
+    { name: 'D5',  color: '#6366f1', synth: 'note', freq: 587.33 },
+    { name: 'E5',  color: '#6366f1', synth: 'note', freq: 659.25 },
+    { name: 'F5',  color: '#6366f1', synth: 'note', freq: 698.46 },
+    { name: 'G5',  color: '#6366f1', synth: 'note', freq: 783.99 },
+    { name: 'A5',  color: '#6366f1', synth: 'note', freq: 880.00 },
+    { name: 'B5',  color: '#6366f1', synth: 'note', freq: 987.77 },
+    { name: 'C6',  color: '#6366f1', synth: 'note', freq: 1046.5 },
+    { name: 'D6',  color: '#6366f1', synth: 'note', freq: 1174.7 },
+  ],
+  bass: [
+    { name: 'B1',  color: '#22c55e', synth: 'bass', freq: 61.74  },
+    { name: 'C2',  color: '#22c55e', synth: 'bass', freq: 65.41  },
+    { name: 'D2',  color: '#22c55e', synth: 'bass', freq: 73.42  },
+    { name: 'E2',  color: '#22c55e', synth: 'bass', freq: 82.41  },
+    { name: 'F2',  color: '#22c55e', synth: 'bass', freq: 87.31  },
+    { name: 'G2',  color: '#22c55e', synth: 'bass', freq: 98.00  },
+    { name: 'A2',  color: '#22c55e', synth: 'bass', freq: 110.00 },
+    { name: 'B2',  color: '#22c55e', synth: 'bass', freq: 123.47 },
+    { name: 'C3',  color: '#22c55e', synth: 'bass', freq: 130.81 },
+    { name: 'D3',  color: '#22c55e', synth: 'bass', freq: 146.83 },
+    { name: 'E3',  color: '#22c55e', synth: 'bass', freq: 164.81 },
+    { name: 'F3',  color: '#22c55e', synth: 'bass', freq: 174.61 },
+    { name: 'G3',  color: '#22c55e', synth: 'bass', freq: 196.00 },
+    { name: 'A3',  color: '#22c55e', synth: 'bass', freq: 220.00 },
+    { name: 'B3',  color: '#22c55e', synth: 'bass', freq: 246.94 },
+    { name: 'C4',  color: '#22c55e', synth: 'bass', freq: 261.63 },
+  ],
+  fx: [
+    { name: 'Rise',   color: '#f59e0b', synth: 'rise'   },
+    { name: 'Fall',   color: '#f59e0b', synth: 'fall'   },
+    { name: 'Zap',    color: '#f59e0b', synth: 'zap'    },
+    { name: 'Laser',  color: '#f59e0b', synth: 'laser'  },
+    { name: 'Wobble', color: '#f59e0b', synth: 'wobble' },
+    { name: 'Glitch', color: '#f59e0b', synth: 'glitch' },
+    { name: 'Vinyl',  color: '#f59e0b', synth: 'vinyl'  },
+    { name: 'Sweep',  color: '#f59e0b', synth: 'sweep'  },
+    { name: 'Boom',   color: '#f59e0b', synth: 'boom'   },
+    { name: 'Noise',  color: '#f59e0b', synth: 'noise'  },
+    { name: 'Ping',   color: '#f59e0b', synth: 'ping'   },
+    { name: 'Metal',  color: '#f59e0b', synth: 'metal'  },
+    { name: 'Tape',   color: '#f59e0b', synth: 'tape'   },
+    { name: 'Choir',  color: '#f59e0b', synth: 'choir'  },
+    { name: 'Sub',    color: '#f59e0b', synth: 'sub'    },
+    { name: 'Air',    color: '#f59e0b', synth: 'air'    },
+  ],
+  sample: Array.from({ length: 16 }, (_, i) => ({
+    name: `Slice ${i + 1}`, color: '#D85A30', synth: 'slice', slice: i, loaded: false
+  })),
+};
+
+const KEY_MAP = [
+  'Q','W','E','R',
+  'A','S','D','F',
+  'Z','X','C','V',
+  '1','2','3','4'
+];
+
+// ── Audio Engine ───────────────────────────────────────────────────────────
+let ctx, masterGain, analyser, dataArray;
+let currentKit = 'drums';
+
+function initAudio() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = ctx.createGain();
+  masterGain.gain.value = 0.85;
+
+  analyser = ctx.createAnalyser();
+  analyser.fftSize = 256;
+  dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+  masterGain.connect(analyser);
+  analyser.connect(ctx.destination);
+}
+
+// ── Sound synthesisers ─────────────────────────────────────────────────────
+function playSound(pad, vol = 1) {
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const { synth, freq } = pad;
+
+  // If this pad has a loaded audio file, play that instead of synthesising.
+  if (pad.buffer) {
+    // Single-voice pads (e.g. a long verse): stop the previous instance so a
+    // re-press RESTARTS from the top instead of layering overlapping copies.
+    if (pad.single && pad._src) { try { pad._src.stop(); } catch (e) {} pad._src = null; }
+    const src = ctx.createBufferSource();
+    src.buffer = pad.buffer;
+    const sg = ctx.createGain();
+    sg.gain.value = vol;
+    src.connect(sg); sg.connect(masterGain);
+    activeVoices.add(src);                 // register so the Stop pad can kill it
+    src.onended = () => { activeVoices.delete(src); if (pad._src === src) pad._src = null; };
+    if (pad.single) pad._src = src;
+    src.start(now);
+    return;
+  }
+
+  const g = ctx.createGain();
+  g.connect(masterGain);
+
+  const dispatch = {
+    kick() {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.exponentialRampToValueAtTime(30, now + 0.35);
+      g.gain.setValueAtTime(vol * 1.2, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc.connect(g); osc.start(now); osc.stop(now + 0.5);
+    },
+    snare() {
+      const noise = ctx.createBufferSource();
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      noise.buffer = buf;
+      const flt = ctx.createBiquadFilter();
+      flt.type = 'bandpass';
+      flt.frequency.value = 3000;
+      flt.Q.value = 0.6;
+      noise.connect(flt); flt.connect(g);
+      g.gain.setValueAtTime(vol * 0.9, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      noise.start(now); noise.stop(now + 0.22);
+
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(100, now + 0.12);
+      const g2 = ctx.createGain();
+      g2.gain.setValueAtTime(vol * 0.4, now);
+      g2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.connect(g2); g2.connect(masterGain);
+      osc.start(now); osc.stop(now + 0.12);
+    },
+    hihat() {
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const flt = ctx.createBiquadFilter();
+      flt.type = 'highpass';
+      flt.frequency.value = 9000;
+      src.connect(flt); flt.connect(g);
+      g.gain.setValueAtTime(vol * 0.5, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      src.start(now); src.stop(now + 0.05);
+    },
+    openhat() {
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.35, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const flt = ctx.createBiquadFilter();
+      flt.type = 'highpass';
+      flt.frequency.value = 9000;
+      src.connect(flt); flt.connect(g);
+      g.gain.setValueAtTime(vol * 0.45, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      src.start(now); src.stop(now + 0.35);
+    },
+    clap() {
+      [0, 0.008, 0.016].forEach(offset => {
+        const buf = ctx.createBuffer(1, ctx.sampleRate * 0.12, ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const flt = ctx.createBiquadFilter();
+        flt.type = 'bandpass'; flt.frequency.value = 2000; flt.Q.value = 1;
+        src.connect(flt);
+        const gn = ctx.createGain();
+        gn.gain.setValueAtTime(vol * 0.6, now + offset);
+        gn.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.12);
+        flt.connect(gn); gn.connect(masterGain);
+        src.start(now + offset); src.stop(now + offset + 0.12);
+      });
+    },
+    rim() {
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = 1600;
+      g.gain.setValueAtTime(vol * 0.4, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      osc.connect(g); osc.start(now); osc.stop(now + 0.04);
+    },
+    tomhi() { synthTom(200, 0.25, vol); },
+    tomlo() { synthTom(100, 0.35, vol); },
+    '808'() {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(60, now);
+      osc.frequency.exponentialRampToValueAtTime(35, now + 0.8);
+      g.gain.setValueAtTime(vol * 1.4, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+      osc.connect(g); osc.start(now); osc.stop(now + 0.9);
+    },
+    shaker() {
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.07, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * Math.sin(i/d.length*Math.PI);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const flt = ctx.createBiquadFilter(); flt.type='highpass'; flt.frequency.value=6000;
+      src.connect(flt); flt.connect(g);
+      g.gain.setValueAtTime(vol*0.35,now); g.gain.exponentialRampToValueAtTime(0.001,now+0.07);
+      src.start(now); src.stop(now+0.07);
+    },
+    cowbell() {
+      const freqs = [562, 845];
+      freqs.forEach(f => {
+        const osc = ctx.createOscillator();
+        osc.type = 'square'; osc.frequency.value = f;
+        const gn = ctx.createGain();
+        gn.gain.setValueAtTime(vol*0.3, now);
+        gn.gain.exponentialRampToValueAtTime(0.001, now+0.8);
+        osc.connect(gn); gn.connect(masterGain);
+        osc.start(now); osc.stop(now+0.8);
+      });
+    },
+    crash() {
+      const buf = ctx.createBuffer(1, ctx.sampleRate*0.8, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+      const src = ctx.createBufferSource(); src.buffer=buf;
+      const flt = ctx.createBiquadFilter(); flt.type='bandpass'; flt.frequency.value=8000; flt.Q.value=0.4;
+      src.connect(flt); flt.connect(g);
+      g.gain.setValueAtTime(vol*0.5,now); g.gain.exponentialRampToValueAtTime(0.001,now+0.8);
+      src.start(now); src.stop(now+0.8);
+    },
+    perc1() { synthTom(350, 0.12, vol); },
+    perc2() { synthTom(500, 0.1,  vol); },
+    fxup()  { synthSweep(200, 1200, 0.4, vol); },
+    fxdown(){ synthSweep(1200, 80, 0.5, vol); },
+    note()  { synthNote(freq, 'sine',   0.5, vol); },
+    bass()  { synthNote(freq, 'sawtooth', 0.5, vol); },
+    rise()  { synthSweep(80, 2000, 0.6, vol); },
+    fall()  { synthSweep(2000, 80, 0.6, vol); },
+    zap()   { synthSweep(800, 50, 0.15, vol); },
+    laser() { synthSweep(2000, 200, 0.3, vol); },
+    wobble(){ synthNote(freq||200, 'sawtooth', 0.5, vol, true); },
+    glitch() {
+      for(let i=0;i<8;i++){
+        const t=now+i*0.03;
+        const f=200+Math.random()*2000;
+        const osc=ctx.createOscillator(); osc.type='square'; osc.frequency.value=f;
+        const gn=ctx.createGain(); gn.gain.setValueAtTime(vol*0.25,t); gn.gain.exponentialRampToValueAtTime(0.001,t+0.025);
+        osc.connect(gn); gn.connect(masterGain); osc.start(t); osc.stop(t+0.025);
+      }
+    },
+    vinyl() {
+      const buf=ctx.createBuffer(1,ctx.sampleRate*0.3,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*0.3;
+      const src=ctx.createBufferSource(); src.buffer=buf;
+      const flt=ctx.createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=3000;
+      src.connect(flt); flt.connect(g);
+      g.gain.setValueAtTime(vol*0.4,now); g.gain.exponentialRampToValueAtTime(0.001,now+0.3);
+      src.start(now); src.stop(now+0.3);
+    },
+    sweep() { synthSweep(100, 8000, 0.8, vol); },
+    boom()  {
+      const osc=ctx.createOscillator(); osc.type='sine';
+      osc.frequency.setValueAtTime(80,now); osc.frequency.exponentialRampToValueAtTime(20,now+0.6);
+      g.gain.setValueAtTime(vol*1.3,now); g.gain.exponentialRampToValueAtTime(0.001,now+0.6);
+      osc.connect(g); osc.start(now); osc.stop(now+0.6);
+    },
+    noise() {
+      const buf=ctx.createBuffer(1,ctx.sampleRate*0.3,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+      const src=ctx.createBufferSource(); src.buffer=buf;
+      src.connect(g);
+      g.gain.setValueAtTime(vol*0.5,now); g.gain.exponentialRampToValueAtTime(0.001,now+0.3);
+      src.start(now); src.stop(now+0.3);
+    },
+    ping()  { synthNote(2000,'sine',0.3,vol); },
+    metal() {
+      [400,550,800,1100].forEach(f=>{
+        const osc=ctx.createOscillator(); osc.type='square'; osc.frequency.value=f;
+        const gn=ctx.createGain(); gn.gain.setValueAtTime(vol*0.2,now); gn.gain.exponentialRampToValueAtTime(0.001,now+0.4);
+        osc.connect(gn); gn.connect(masterGain); osc.start(now); osc.stop(now+0.4);
+      });
+    },
+    tape()  {
+      const buf=ctx.createBuffer(1,ctx.sampleRate*0.15,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(1-i/d.length);
+      const src=ctx.createBufferSource(); src.buffer=buf;
+      const flt=ctx.createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=4000;
+      src.connect(flt); flt.connect(g);
+      g.gain.setValueAtTime(vol*0.6,now); g.gain.exponentialRampToValueAtTime(0.001,now+0.15);
+      src.start(now); src.stop(now+0.15);
+    },
+    choir() { [261,329,392,523].forEach(f=>synthNote(f,'sine',0.5,vol*0.3)); },
+    sub()   { synthNote(40,'sine',0.7,vol); },
+    air()   {
+      const buf=ctx.createBuffer(1,ctx.sampleRate*0.5,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+      const src=ctx.createBufferSource(); src.buffer=buf;
+      const flt=ctx.createBiquadFilter(); flt.type='highpass'; flt.frequency.value=12000;
+      src.connect(flt); flt.connect(g);
+      g.gain.setValueAtTime(vol*0.3,now); g.gain.exponentialRampToValueAtTime(0.001,now+0.5);
+      src.start(now); src.stop(now+0.5);
+    },
+  };
+
+  const fn = dispatch[synth];
+  if (fn) fn();
+}
+
+function synthTom(startFreq, dur, vol) {
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(startFreq, now);
+  osc.frequency.exponentialRampToValueAtTime(startFreq * 0.3, now + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(vol * 0.9, now);
+  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  osc.connect(g); g.connect(masterGain);
+  osc.start(now); osc.stop(now + dur);
+}
+
+function synthSweep(f1, f2, dur, vol) {
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(f1, now);
+  osc.frequency.exponentialRampToValueAtTime(f2, now + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(vol * 0.5, now);
+  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  osc.connect(g); g.connect(masterGain);
+  osc.start(now); osc.stop(now + dur);
+}
+
+function synthNote(freq, type, dur, vol, wobble = false) {
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = type;
+  osc.frequency.value = freq;
+  if (wobble) {
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 5;
+    const lfoG = ctx.createGain(); lfoG.gain.value = 8;
+    lfo.connect(lfoG); lfoG.connect(osc.frequency);
+    lfo.start(now); lfo.stop(now + dur);
+  }
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(vol * 0.6, now);
+  env.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  osc.connect(env); env.connect(masterGain);
+  osc.start(now); osc.stop(now + dur);
+}
+
+// ── Sampler engine ─────────────────────────────────────────────────────────
+// Loads an audio file in-browser, decodes it to an AudioBuffer, and chops it
+// into N equal slices. Each pad plays its slice via a BufferSourceNode.
+const sampler = {
+  buffer: null,        // decoded AudioBuffer of the full track
+  sliceCount: 16,      // how many pads the track is spread across
+  mode: 'oneshot',     // 'oneshot' = play full slice, 'gate' = stop on release
+  pitch: 1.0,          // playbackRate
+  activeSource: null,  // for gate mode / stopping previous
+};
+
+async function loadSampleFile(file) {
+  if (!ctx) initAudio();
+  statusLabel.textContent = 'DECODING…';
+  try {
+    const arrayBuf = await file.arrayBuffer();
+    const audioBuf = await ctx.decodeAudioData(arrayBuf);
+    sampler.buffer = audioBuf;
+    applySlices();
+    drawSampleWave();
+    document.getElementById('dropZone').style.display = 'none';
+    document.getElementById('sampleWave').style.display = 'block';
+    document.getElementById('samplerControls').style.display = 'flex';
+    statusLabel.textContent = 'SAMPLE LOADED';
+    const mins = Math.floor(audioBuf.duration / 60);
+    const secs = String(Math.floor(audioBuf.duration % 60)).padStart(2, '0');
+    lastHitName.textContent = file.name.replace(/\.[^.]+$/, '').slice(0, 12);
+    lastHitKey.textContent = `${mins}:${secs} · ${sampler.sliceCount} slices`;
+  } catch (err) {
+    statusLabel.textContent = 'DECODE FAILED';
+    document.getElementById('dropText').textContent = 'Could not decode that file — try a different one';
+  }
+}
+
+function applySlices() {
+  // Mark all 16 sample pads as loaded and record their slice boundaries
+  KITS.sample.forEach((pad, i) => {
+    pad.loaded = i < sampler.sliceCount;
+  });
+  if (currentKit === 'sample') buildPads('sample');
+}
+
+function playSlice(index) {
+  if (!sampler.buffer || index >= sampler.sliceCount) return;
+  const dur = sampler.buffer.duration;
+  const sliceDur = dur / sampler.sliceCount;
+  const startAt = index * sliceDur;
+
+  // Stop any previous slice (so retriggers don't pile up muddily)
+  if (sampler.activeSource) {
+    try { sampler.activeSource.stop(); } catch (e) {}
+  }
+
+  const src = ctx.createBufferSource();
+  src.buffer = sampler.buffer;
+  src.playbackRate.value = sampler.pitch;
+
+  const g = ctx.createGain();
+  g.gain.value = masterGain.gain.value;
+  // tiny fade in/out to avoid clicks at slice edges
+  const now = ctx.currentTime;
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(masterGain.gain.value, now + 0.005);
+
+  src.connect(g); g.connect(masterGain);
+
+  const playLen = sampler.mode === 'oneshot' ? sliceDur / sampler.pitch : 8;
+  src.start(now, startAt, sampler.mode === 'oneshot' ? sliceDur : undefined);
+  if (sampler.mode === 'oneshot') {
+    g.gain.setValueAtTime(masterGain.gain.value, now + playLen - 0.01);
+    g.gain.linearRampToValueAtTime(0, now + playLen);
+  }
+  sampler.activeSource = src;
+}
+
+function drawSampleWave() {
+  const c = document.getElementById('sampleWave');
+  c.width = c.offsetWidth * devicePixelRatio;
+  c.height = c.offsetHeight * devicePixelRatio;
+  const cx = c.getContext('2d');
+  const w = c.width, h = c.height;
+  cx.clearRect(0, 0, w, h);
+  if (!sampler.buffer) return;
+
+  const data = sampler.buffer.getChannelData(0);
+  const step = Math.floor(data.length / w);
+  cx.strokeStyle = '#D85A30';
+  cx.lineWidth = devicePixelRatio;
+  cx.beginPath();
+  for (let i = 0; i < w; i++) {
+    let min = 1, max = -1;
+    for (let j = 0; j < step; j++) {
+      const v = data[i * step + j] || 0;
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    cx.moveTo(i, (1 + min) * h / 2);
+    cx.lineTo(i, (1 + max) * h / 2);
+  }
+  cx.stroke();
+
+  // slice divider lines
+  cx.strokeStyle = 'rgba(255,255,255,.18)';
+  cx.lineWidth = devicePixelRatio;
+  for (let s = 1; s < sampler.sliceCount; s++) {
+    const x = (w / sampler.sliceCount) * s;
+    cx.beginPath(); cx.moveTo(x, 0); cx.lineTo(x, h); cx.stroke();
+  }
+}
+
+// ── Loop pad engine ────────────────────────────────────────────────────────
+// The Instrument pad (Drums kit, index 8 / key Z) is a dedicated looping
+// backing-track pad. It uses a single <audio loop> element — one instance only,
+// so playback can never overlap. Press Z to start; press Z again to stop and
+// rewind, so the next press restarts cleanly from the top.
+const LOOP_PAD_INDEX = 8;
+// The uploaded file is spelled "intrumental_final.wav"; we also accept the
+// correctly-spelled "instrumental_final.wav" in case it gets renamed.
+const LOOP_FILE_CANDIDATES = ['intrumental_final.wav', 'instrumental_final.wav'];
+
+const loop = {
+  audio: null,       // the single HTMLAudioElement — only one ever exists
+  ready: false,      // canplaythrough fired (desktop nicety; NOT required to play)
+  attached: false,   // an audio source is set and hasn't errored → pad is usable
+  playing: false,
+  name: '',
+};
+
+const loopTitleEl = () => document.getElementById('loopTitle');
+const loopSubEl   = () => document.getElementById('loopSub');
+const loopStripEl = () => document.getElementById('loopStrip');
+
+// Build the single audio element for a given source.
+function attachLoopAudio(src, label, candidateIdx) {
+  // Tear down any previous element so only ONE instance ever exists
+  if (loop.audio) { try { loop.audio.pause(); } catch (e) {} loop.audio.src = ''; }
+  loop.ready = false;
+  loop.playing = false;
+  loop.name = label;
+  loopStripEl().classList.remove('playing', 'error', 'loaded');
+
+  const a = new Audio();
+  a.loop = true;                 // ← continuous looping handled by the browser
+  a.preload = 'auto';
+  a.playsInline = true;          // iOS: don't hijack to fullscreen player
+  a.volume = masterGain ? masterGain.gain.value : 0.85;
+
+  const markReady = () => {
+    if (loop.audio !== a) return;
+    loop.ready = true;
+    loopTitleEl().textContent = label.slice(0, 28);
+    loopSubEl().textContent = 'loaded · Instrumental pad (Z) plays it on loop';
+    loopStripEl().classList.add('loaded');
+    loopStripEl().classList.remove('error');
+    refreshLoopPadVisual();
+  };
+  // canplaythrough may never fire on mobile (media isn't pre-buffered until a
+  // user gesture), so also accept the earlier, more reliable readiness events.
+  a.addEventListener('canplaythrough', markReady, { once: true });
+  a.addEventListener('canplay',        markReady, { once: true });
+  a.addEventListener('loadedmetadata', markReady, { once: true });
+
+  a.addEventListener('error', () => {
+    // If this was an auto-load candidate, try the next spelling
+    if (candidateIdx != null && candidateIdx + 1 < LOOP_FILE_CANDIDATES.length) {
+      tryCandidate(candidateIdx + 1);
+    } else {
+      showLoopMissing();
+    }
+  });
+
+  a.src = src;
+  a.load();
+  loop.audio = a;
+  loop.attached = true;          // pad is now usable — playback can start on tap
+  refreshLoopPadVisual();
+}
+
+function tryCandidate(i) {
+  const file = LOOP_FILE_CANDIDATES[i];
+  attachLoopAudio(file, file.replace(/\.[^.]+$/, ''), i);
+}
+
+// Auto-load on app start
+function autoLoadDefaultLoop() {
+  loopTitleEl().textContent = 'Instrumental pad — loading…';
+  loopSubEl().textContent = 'looking for instrumental_final.wav';
+  tryCandidate(0);
+}
+
+// Manual override via the strip (no candidate fallback for a chosen file)
+function loadLoopFile(file) {
+  attachLoopAudio(URL.createObjectURL(file), file.name.replace(/\.[^.]+$/, ''), null);
+}
+
+// Visible error if the file can't be found / loaded
+function showLoopMissing() {
+  loop.ready = false;
+  loop.attached = false;
+  loopTitleEl().textContent = '⚠ instrumental_final.wav could not be loaded';
+  loopSubEl().textContent = 'Place the file next to this HTML and reload, or use Load clip';
+  loopStripEl().classList.add('error');
+  loopStripEl().classList.remove('loaded', 'playing');
+  refreshLoopPadVisual();
+}
+
+// ── Play / stop toggle (single instance, no overlap, stop rewinds) ──────────
+function startLoop() {
+  if (!loop.audio) return;
+  if (loop.playing) return;            // already playing → do NOT restart
+  // Do NOT gate on loop.ready: on mobile the file may not be pre-buffered, but
+  // calling play() inside the tap gesture lets the browser buffer + start it.
+  const p = loop.audio.play();
+  if (p && p.then) {
+    p.then(() => {
+      loop.ready = true;
+      loop.playing = true;
+      loopStripEl().classList.add('playing');
+      loopStripEl().classList.remove('error');
+      refreshLoopPadVisual();
+    }).catch(() => {
+      // Autoplay/network refusal — leave it stopped; user can tap again.
+    });
+  }
+}
+
+function stopLoop() {
+  if (!loop.audio || !loop.playing) return;
+  loop.audio.pause();
+  loop.audio.currentTime = 0;          // rewind so next start plays from the top
+  loop.playing = false;
+  loopStripEl().classList.remove('playing');
+  refreshLoopPadVisual();
+}
+
+function toggleLoop() {
+  loop.playing ? stopLoop() : startLoop();
+}
+
+// Reflects loop state onto the Instrument pad (glow + ▸ while playing)
+function refreshLoopPadVisual() {
+  const el = padGrid.children[LOOP_PAD_INDEX];
+  if (!el) return;
+  const baseName = KITS[currentKit][LOOP_PAD_INDEX].name;
+  const nameEl = el.querySelector('.pad-name');
+  const isInstrumentPad = currentKit === 'drums';
+  if (isInstrumentPad && loop.attached) {
+    el.classList.add('has-sample');
+    if (nameEl) nameEl.textContent = loop.playing ? baseName + ' ▸' : baseName;
+    el.classList.toggle('looping', loop.playing);
+  } else {
+    el.classList.remove('looping');
+    if (nameEl) nameEl.textContent = baseName;
+  }
+}
+
+// ── UI ─────────────────────────────────────────────────────────────────────
+const padGrid   = document.getElementById('padGrid');
+const keyGrid   = document.getElementById('keyGrid');
+const lastHitName = document.getElementById('lastHitName');
+const lastHitKey  = document.getElementById('lastHitKey');
+const statusLabel = document.getElementById('statusLabel');
+const volSlider   = document.getElementById('masterVol');
+const volVal      = document.getElementById('volVal');
+
+function buildPads(kitName) {
+  const kit = KITS[kitName];
+  padGrid.innerHTML = '';
+  keyGrid.innerHTML = '';
+  kit.forEach((pad, i) => {
+    const row = Math.floor(i / 4);
+    const el = document.createElement('div');
+    const isUnloadedSlice = kitName === 'sample' && !pad.loaded;
+    el.className = 'pad' + (isUnloadedSlice ? '' : ' has-sample');
+    el.dataset.index = i;
+    el.dataset.row = kitName === 'sample' ? (i % 4) : row;
+    el.innerHTML = `<div class="pad-name">${pad.name}</div><div class="pad-key">${KEY_MAP[i]}</div>`;
+    el.addEventListener('pointerdown', e => { e.preventDefault(); triggerPad(i); });
+    padGrid.appendChild(el);
+
+    const chip = document.createElement('div');
+    chip.className = 'key-chip';
+    chip.textContent = KEY_MAP[i];
+    keyGrid.appendChild(chip);
+  });
+  if (typeof refreshLoopPadVisual === 'function') refreshLoopPadVisual();
+}
+
+// ── Global STOP — silence every currently-playing pad/voice ─────────────────
+const activeVoices = new Set();   // every live sample BufferSource (pads + verses)
+
+function stopAllVoices() {
+  // 1) all sample pad voices (pianos, Look at YA, YE Verse, …)
+  activeVoices.forEach(src => { try { src.stop(); } catch (e) {} });
+  activeVoices.clear();
+  for (const kitName in KITS) KITS[kitName].forEach(p => { if (p._src) p._src = null; });
+  // 2) the sampler slice voice
+  if (sampler.activeSource) { try { sampler.activeSource.stop(); } catch (e) {} sampler.activeSource = null; }
+  // 3) the Instrument loop (Z)
+  if (loop.playing) stopLoop();
+}
+
+function triggerPad(index) {
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume();   // wake audio on first tap
+
+  // The Instrument pad (Drums kit, Z) plays the loaded track on loop
+  if (index === LOOP_PAD_INDEX && currentKit === 'drums' && loop.attached) {
+    const willPlay = !loop.playing;   // toggleLoop flips state async; label the intent
+    toggleLoop();
+    const el = padGrid.children[index];
+    el.classList.add('hit');
+    setTimeout(() => el.classList.remove('hit'), 100);
+    lastHitName.textContent = willPlay ? 'Instrumental ▸' : 'Instrumental ■';
+    lastHitKey.textContent = willPlay ? 'looping · key Z' : 'stopped · key Z';
+    return;
+  }
+
+  const kit = KITS[currentKit];
+  const pad = kit[index];
+
+  // STOP pad — silences every pad/voice currently playing
+  if (pad.action === 'stop') {
+    stopAllVoices();
+    const el = padGrid.children[index];
+    el.classList.add('hit');
+    setTimeout(() => el.classList.remove('hit'), 100);
+    lastHitName.textContent = 'Stop';
+    lastHitKey.textContent  = `all stopped · key ${KEY_MAP[index]}`;
+    return;
+  }
+
+  if (currentKit === 'sample') {
+    if (!sampler.buffer || index >= sampler.sliceCount) return;
+    playSlice(index);
+  } else {
+    playSound(pad, masterGain.gain.value);
+  }
+
+  const el = padGrid.children[index];
+  el.classList.add('hit');
+  setTimeout(() => el.classList.remove('hit'), 100);
+
+  lastHitName.textContent = pad.name;
+  lastHitKey.textContent  = `key: ${KEY_MAP[index]}`;
+}
+
+// Kit buttons
+const samplerPanel = document.getElementById('samplerPanel');
+document.querySelectorAll('.kit-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.kit-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentKit = btn.dataset.kit;
+    buildPads(currentKit);
+    samplerPanel.style.display = currentKit === 'sample' ? 'block' : 'none';
+    if (currentKit === 'sample' && sampler.buffer) {
+      requestAnimationFrame(drawSampleWave);
+    }
+  });
+});
+
+// ── Sampler controls ───────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) loadSampleFile(e.target.files[0]);
+});
+
+['dragenter', 'dragover'].forEach(ev =>
+  dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('dragover'); })
+);
+['dragleave', 'drop'].forEach(ev =>
+  dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('dragover'); })
+);
+dropZone.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('audio')) loadSampleFile(f);
+});
+
+document.getElementById('sliceCount').addEventListener('change', e => {
+  sampler.sliceCount = parseInt(e.target.value);
+  applySlices();
+  drawSampleWave();
+});
+
+document.getElementById('modeOneshot').addEventListener('click', e => {
+  sampler.mode = 'oneshot';
+  e.target.classList.add('active');
+  document.getElementById('modeGate').classList.remove('active');
+});
+document.getElementById('modeGate').addEventListener('click', e => {
+  sampler.mode = 'gate';
+  e.target.classList.add('active');
+  document.getElementById('modeOneshot').classList.remove('active');
+});
+
+document.getElementById('samplePitch').addEventListener('input', e => {
+  sampler.pitch = e.target.value / 100;
+  document.getElementById('pitchVal').textContent = sampler.pitch.toFixed(1) + '×';
+});
+
+document.getElementById('reloadBtn').addEventListener('click', () => {
+  sampler.buffer = null;
+  KITS.sample.forEach(p => p.loaded = false);
+  buildPads('sample');
+  document.getElementById('dropZone').style.display = 'block';
+  document.getElementById('dropText').textContent = 'Drop an audio file here, or click to browse';
+  document.getElementById('sampleWave').style.display = 'none';
+  document.getElementById('samplerControls').style.display = 'none';
+  statusLabel.textContent = 'AUDIO ENGINE ON';
+});
+
+// ── Loop pad loader ────────────────────────────────────────────────────────
+const loopInput = document.getElementById('loopInput');
+const loopStrip = document.getElementById('loopStrip');
+document.getElementById('loopLoadBtn').addEventListener('click', () => loopInput.click());
+loopInput.addEventListener('change', e => {
+  if (e.target.files[0]) loadLoopFile(e.target.files[0]);
+});
+['dragenter', 'dragover'].forEach(ev =>
+  loopStrip.addEventListener(ev, e => { e.preventDefault(); loopStrip.style.borderColor = '#6366f1'; })
+);
+['dragleave', 'drop'].forEach(ev =>
+  loopStrip.addEventListener(ev, e => { e.preventDefault(); loopStrip.style.borderColor = ''; })
+);
+loopStrip.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('audio')) loadLoopFile(f);
+});
+
+// Volume
+volSlider.addEventListener('input', () => {
+  const v = volSlider.value / 100;
+  masterGain.gain.setTargetAtTime(v, ctx.currentTime, 0.01);
+  volVal.textContent = volSlider.value;
+  if (loop.audio) loop.audio.volume = v;   // keep the loop track in sync
+});
+
+// Keyboard
+const keyToIndex = {};
+KEY_MAP.forEach((k, i) => keyToIndex[k.toLowerCase()] = i);
+
+document.addEventListener('keydown', e => {
+  if (e.repeat) return;
+  const idx = keyToIndex[e.key.toLowerCase()];
+  if (idx !== undefined) triggerPad(idx);
+});
+
+// Gate mode: release stops the slice
+function releaseGate() {
+  if (currentKit === 'sample' && sampler.mode === 'gate' && sampler.activeSource) {
+    try { sampler.activeSource.stop(); } catch (e) {}
+    sampler.activeSource = null;
+  }
+}
+document.addEventListener('keyup', releaseGate);
+document.addEventListener('pointerup', releaseGate);
+
+// ── Waveform visualiser ────────────────────────────────────────────────────
+const canvas = document.getElementById('vizCanvas');
+const canvasCtx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width  = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function drawViz() {
+  requestAnimationFrame(drawViz);
+  if (!analyser) return;
+
+  analyser.getByteTimeDomainData(dataArray);
+
+  const w = canvas.width, h = canvas.height;
+  canvasCtx.clearRect(0, 0, w, h);
+  canvasCtx.strokeStyle = '#ff5500';
+  canvasCtx.lineWidth = 1.5 * devicePixelRatio;
+  canvasCtx.beginPath();
+
+  const slice = w / dataArray.length;
+  let x = 0;
+  for (let i = 0; i < dataArray.length; i++) {
+    const v = dataArray[i] / 128;
+    const y = (v * h) / 2;
+    i === 0 ? canvasCtx.moveTo(x, y) : canvasCtx.lineTo(x, y);
+    x += slice;
+  }
+  canvasCtx.stroke();
+}
+drawViz();
+
+// Wake the audio context on the very first interaction anywhere
+document.addEventListener('pointerdown', function resumeOnce() {
+  if (ctx && ctx.state === 'suspended') ctx.resume();
+  document.removeEventListener('pointerdown', resumeOnce);
+}, { once: true });
+
+// ── Per-pad audio samples ───────────────────────────────────────────────────
+// Any pad with a `sampleUrl` gets its file decoded into `pad.buffer` so it
+// plays the real sound instead of a synthesised one.
+async function loadPadSamples() {
+  const jobs = [];
+  for (const kitName in KITS) {
+    KITS[kitName].forEach(pad => {
+      if (!pad.sampleUrl) return;
+      jobs.push(
+        fetch(pad.sampleUrl)
+          .then(r => r.arrayBuffer())
+          .then(buf => ctx.decodeAudioData(buf))
+          .then(audio => { pad.buffer = audio; })
+          .catch(err => console.warn('Pad sample failed to load:', pad.sampleUrl, err))
+      );
+    });
+  }
+  await Promise.all(jobs);
+}
+
+// ── Init sequence ──────────────────────────────────────────────────────────
+async function boot() {
+  const fill = document.getElementById('loadingFill');
+  const txt  = document.getElementById('loadingText');
+
+  const steps = [
+    [20,  'creating audio context…'],
+    [50,  'building synthesis engine…'],
+    [80,  'loading drum kit…'],
+    [100, 'ready.'],
+  ];
+
+  for (const [pct, label] of steps) {
+    fill.style.width = pct + '%';
+    txt.textContent  = label;
+    await new Promise(r => setTimeout(r, 280));
+  }
+
+  initAudio();
+  buildPads('drums');
+  autoLoadDefaultLoop();      // bind the instrumental track to the Instrument pad
+  // Decode per-pad audio files in the BACKGROUND — do NOT await, or a large
+  // sample (e.g. a big Piano 3) would keep the loading overlay up forever on
+  // slow connections. Pads fall back to their synth sound until the buffer lands.
+  loadPadSamples();
+
+  await new Promise(r => setTimeout(r, 200));
+  document.getElementById('loading').classList.add('done');
+  statusLabel.textContent = 'AUDIO ENGINE ON';
+}
+
+boot();
+</script>
+</body>
+</html>
