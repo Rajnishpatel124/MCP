@@ -1,21 +1,6 @@
 {
-  "name": "rajnish-mpc-runaway-ye",
-  "builds": [
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/index.html",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
+  "buildCommand": "echo 'Static site - no build needed'",
+  "outputDirectory": "./",
   "headers": [
     {
       "source": "/index.html",
